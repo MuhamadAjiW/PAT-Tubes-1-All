@@ -1,7 +1,8 @@
 version: "3.8"
 
 services:
-  client-app:
+# CLIENT----------------------------------------------------
+  client:
     container_name: client-app
     build: 
       context: ./tugas-besar-pat-client
@@ -10,12 +11,14 @@ services:
       - '8170:5173'
     stdin_open: true
     tty: true
+    depends_on:
+      - booking-db
+      - queue
     networks:
       - dockerNet
-
-  client-app-db:
-    container_name: client-app-db
-    image: postgres:15.0-alpine
+  client-db:
+    container_name: client-db
+    image: postgres:latest
     volumes:
       - client-app-db:/var/lib/postgresql/data
       - ./tugas-besar-pat-client/database:/docker-entrypoint-initdb.d
@@ -27,7 +30,9 @@ services:
     ports:
       - 8171:5433
     command: -p 5433
-
+    networks:
+      - dockerNet
+# BOOKING----------------------------------------------------
   booking-app:
     container_name: booking-app
     build: 
@@ -37,16 +42,17 @@ services:
       - 8180:3000
     volumes:
       - ./tugas-besar-pat-booking/src:/usr/src/app/src
-    networks:
-      - dockerNet
+    env_file: ./tugas-besar-pat-booking/.env
     depends_on:
       - booking-db
-
+      - queue
+    networks:
+      - dockerNet
   booking-db:
     container_name: booking-db
     image: postgres:latest
     ports:
-      - 8183:5432
+      - 8181:5432
     volumes:
       - booking-db:/var/lib/postgresql/data
       - ./tugas-besar-pat-booking/db:/docker-entrypoint-initdb.d
@@ -58,13 +64,33 @@ services:
     command: -p 5432
     networks:
       - dockerNet
-
+# PAYMENT----------------------------------------------------
+  payment-app:
+    container_name: payment-app
+    build:
+      context: ./tugas-besar-pat-payment
+      dockerfile: Dockerfile
+    ports:
+      - 8190:8080
+    depends_on:
+      - payment-db
+      - queue
+    networks:
+      - dockerNet
+  payment-db:
+    container_name: payment-db
+    image: mongodb/mongodb-community-server:latest
+    ports:
+      - 8191:27017
+    networks:
+      - dockerNet
+# RABBITMQ----------------------------------------------------
   queue:
     container_name: central-queue
     image: rabbitmq:3.13.0-rc.2-management
     ports:
-      - 8100:5672
-      - 8101:15672
+      - 8200:5672
+      - 8201:15672
     environment:
       RABBITMQ_DEFAULT_USER: test-user
       RABBITMQ_DEFAULT_PASS: test-user

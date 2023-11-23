@@ -1,0 +1,1 @@
+docker compose -f ./docker-compose.yml -p "tubes-pat-all" --env-file .env up --build -d
