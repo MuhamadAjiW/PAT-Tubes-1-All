@@ -11,11 +11,26 @@ services:
       - '8170:5173'
     stdin_open: true
     tty: true
+    volumes:
+      - ./tugas-besar-pat-client/src:/app/src
     depends_on:
-      - booking-db
+      - client-db
       - queue
     networks:
       - dockerNet
+  # client-api:
+  #   container_name: client-api
+  #   build: 
+  #     context: ./tugas-besar-pat-booking/backend
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - 8171:3000
+  #   env_file: ./tugas-besar-pat-client/backend/.env_docker
+  #   depends_on:
+  #     - client-db
+  #     - queue
+  #   networks:
+  #     - dockerNet
   client-db:
     container_name: client-db
     image: postgres:latest
@@ -26,7 +41,6 @@ services:
       POSTGRES_USER: ${POSTGRES_CLIENT_USER}
       POSTGRES_PASSWORD: ${POSTGRES_CLIENT_PASSWORD}
       POSTGRES_DB: ${POSTGRES_CLIENT_DB}
-    restart: always
     ports:
       - 8171:5433
     command: -p 5433
@@ -60,7 +74,6 @@ services:
       POSTGRES_USER: ${POSTGRES_BOOKING_USER}
       POSTGRES_PASSWORD: ${POSTGRES_BOOKING_PASSWORD}
       POSTGRES_DB: ${POSTGRES_BOOKING_DB}
-    restart: always
     command: -p 5432
     networks:
       - dockerNet
@@ -73,6 +86,7 @@ services:
     ports:
       - 8190:8080
     depends_on:
+      - booking-app
       - payment-db
       - queue
     networks:
@@ -80,6 +94,8 @@ services:
   payment-db:
     container_name: payment-db
     image: mongodb/mongodb-community-server:latest
+    volumes:
+      - payment-db:/data/db
     ports:
       - 8191:27017
     networks:
@@ -107,4 +123,5 @@ networks:
 volumes:
   client-app-db:
   booking-db:
+  payment-db:
   rabbitmq:
