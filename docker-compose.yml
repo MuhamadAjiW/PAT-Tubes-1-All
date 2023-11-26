@@ -1,39 +1,34 @@
 version: "3.8"
 
 services:
-# CLIENT----------------------------------------------------
-  client:
+  client-app:
     container_name: client-app
     build: 
-      context: ./tugas-besar-pat-client
+      context: ./tugas-besar-pat-client/frontend
       dockerfile: Dockerfile
     ports:
-      - '8170:5173'
+      - '5173:5173'
     stdin_open: true
     tty: true
-    volumes:
-      - ./tugas-besar-pat-client/src:/app/src
-    depends_on:
-      - client-db
-      - queue
     networks:
       - dockerNet
-  # client-api:
-  #   container_name: client-api
-  #   build: 
-  #     context: ./tugas-besar-pat-booking/backend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - 8171:3000
-  #   env_file: ./tugas-besar-pat-client/backend/.env_docker
-  #   depends_on:
-  #     - client-db
-  #     - queue
-  #   networks:
-  #     - dockerNet
-  client-db:
-    container_name: client-db
-    image: postgres:latest
+  client-backend:
+    container_name: client-backend
+    build: 
+      context: ./tugas-besar-pat-client/backend
+      dockerfile: Dockerfile
+    ports:
+      - '5174:5174'
+    stdin_open: true
+    tty: true
+    networks:
+      - dockerNet
+    depends_on:
+      - client-app-db
+
+  client-app-db:
+    container_name: client-app-db
+    image: postgres:15.0-alpine
     volumes:
       - client-app-db:/var/lib/postgresql/data
       - ./tugas-besar-pat-client/database:/docker-entrypoint-initdb.d
@@ -41,43 +36,57 @@ services:
       POSTGRES_USER: ${POSTGRES_CLIENT_USER}
       POSTGRES_PASSWORD: ${POSTGRES_CLIENT_PASSWORD}
       POSTGRES_DB: ${POSTGRES_CLIENT_DB}
+    restart: always
     ports:
-      - 8171:5433
+      - 5433:5433
     command: -p 5433
     networks:
       - dockerNet
-# BOOKING----------------------------------------------------
+
   booking-app:
     container_name: booking-app
     build: 
       context: ./tugas-besar-pat-booking
       dockerfile: Dockerfile
     ports:
-      - 8180:3000
+      - 3100:3100
     volumes:
       - ./tugas-besar-pat-booking/src:/usr/src/app/src
-    env_file: ./tugas-besar-pat-booking/.env_docker
-    depends_on:
-      - booking-db
-      - queue
     networks:
       - dockerNet
+    depends_on:
+      - queue
+      - booking-db
+
+  # booking-queue:
+  #   container_name: booking-queue
+  #   image: rabbitmq:3.13.0-rc.2-management
+  #   ports:
+  #     - 8181:5672
+  #     - 8182:15672
+  #   environment:
+  #     RABBITMQ_DEFAULT_USER: test-user
+  #     RABBITMQ_DEFAULT_PASS: test-user
+  #   networks:
+  #     - dockerNet
+
   booking-db:
     container_name: booking-db
     image: postgres:latest
     ports:
-      - 8181:5432
+      - 8183:5432
     volumes:
       - booking-db:/var/lib/postgresql/data
       - ./tugas-besar-pat-booking/db:/docker-entrypoint-initdb.d
     environment:
-      POSTGRES_USER: ${POSTGRES_BOOKING_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_BOOKING_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_BOOKING_DB}
+      POSTGRES_USER: ${POSTGRES_BOOOKING_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_BOOOKING_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_BOOOKING_DB}
+    restart: always
     command: -p 5432
     networks:
       - dockerNet
-# PAYMENT----------------------------------------------------
+
   payment-app:
     container_name: payment-app
     build:
@@ -86,7 +95,6 @@ services:
     ports:
       - 8190:8080
     depends_on:
-      - booking-app
       - payment-db
       - queue
     networks:
@@ -94,13 +102,8 @@ services:
   payment-db:
     container_name: payment-db
     image: mongodb/mongodb-community-server:latest
-    volumes:
-      - payment-db:/data/db
     ports:
       - 8191:27017
-    networks:
-      - dockerNet
-# RABBITMQ----------------------------------------------------
   queue:
     container_name: central-queue
     image: rabbitmq:3.13.0-rc.2-management
@@ -111,7 +114,7 @@ services:
       RABBITMQ_DEFAULT_USER: test-user
       RABBITMQ_DEFAULT_PASS: test-user
     volumes:
-      - rabbitmq:/var/lib/rabbitmq
+      - ./rabbitmq:/var/lib/rabbitmq
     networks:
       - dockerNet
 
@@ -123,5 +126,3 @@ networks:
 volumes:
   client-app-db:
   booking-db:
-  payment-db:
-  rabbitmq:
