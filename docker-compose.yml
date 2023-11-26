@@ -1,6 +1,7 @@
 version: "3.8"
 
 services:
+# CLIENT----------------------------------------------------
   client-app:
     container_name: client-app
     build: 
@@ -28,7 +29,7 @@ services:
 
   client-app-db:
     container_name: client-app-db
-    image: postgres:15.0-alpine
+    image: postgres:latest
     volumes:
       - client-app-db:/var/lib/postgresql/data
       - ./tugas-besar-pat-client/database:/docker-entrypoint-initdb.d
@@ -36,57 +37,43 @@ services:
       POSTGRES_USER: ${POSTGRES_CLIENT_USER}
       POSTGRES_PASSWORD: ${POSTGRES_CLIENT_PASSWORD}
       POSTGRES_DB: ${POSTGRES_CLIENT_DB}
-    restart: always
     ports:
       - 5433:5433
     command: -p 5433
     networks:
       - dockerNet
-
+# BOOKING----------------------------------------------------
   booking-app:
     container_name: booking-app
     build: 
       context: ./tugas-besar-pat-booking
       dockerfile: Dockerfile
     ports:
-      - 3100:3100
+      - 8180:3000
     volumes:
       - ./tugas-besar-pat-booking/src:/usr/src/app/src
+    env_file: ./tugas-besar-pat-booking/.env_docker
+    depends_on:
+      - booking-db
+      - queue
     networks:
       - dockerNet
-    depends_on:
-      - queue
-      - booking-db
-
-  # booking-queue:
-  #   container_name: booking-queue
-  #   image: rabbitmq:3.13.0-rc.2-management
-  #   ports:
-  #     - 8181:5672
-  #     - 8182:15672
-  #   environment:
-  #     RABBITMQ_DEFAULT_USER: test-user
-  #     RABBITMQ_DEFAULT_PASS: test-user
-  #   networks:
-  #     - dockerNet
-
   booking-db:
     container_name: booking-db
     image: postgres:latest
     ports:
-      - 8183:5432
+      - 8181:5432
     volumes:
       - booking-db:/var/lib/postgresql/data
       - ./tugas-besar-pat-booking/db:/docker-entrypoint-initdb.d
     environment:
-      POSTGRES_USER: ${POSTGRES_BOOOKING_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_BOOOKING_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_BOOOKING_DB}
-    restart: always
+      POSTGRES_USER: ${POSTGRES_BOOKING_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_BOOKING_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_BOOKING_DB}
     command: -p 5432
     networks:
       - dockerNet
-
+# PAYMENT----------------------------------------------------
   payment-app:
     container_name: payment-app
     build:
@@ -95,6 +82,7 @@ services:
     ports:
       - 8190:8080
     depends_on:
+      - booking-app
       - payment-db
       - queue
     networks:
@@ -102,8 +90,13 @@ services:
   payment-db:
     container_name: payment-db
     image: mongodb/mongodb-community-server:latest
+    volumes:
+      - payment-db:/data/db
     ports:
       - 8191:27017
+    networks:
+      - dockerNet
+# RABBITMQ----------------------------------------------------
   queue:
     container_name: central-queue
     image: rabbitmq:3.13.0-rc.2-management
@@ -114,7 +107,7 @@ services:
       RABBITMQ_DEFAULT_USER: test-user
       RABBITMQ_DEFAULT_PASS: test-user
     volumes:
-      - ./rabbitmq:/var/lib/rabbitmq
+      - rabbitmq:/var/lib/rabbitmq
     networks:
       - dockerNet
 
@@ -126,3 +119,5 @@ networks:
 volumes:
   client-app-db:
   booking-db:
+  payment-db:
+  rabbitmq:
