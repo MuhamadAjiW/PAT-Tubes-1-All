@@ -52,6 +52,7 @@ services:
       - 8180:3000
     volumes:
       - ./tugas-besar-pat-booking/src:/usr/src/app/src
+      - ./tugas-besar-pat-booking/resource:/usr/src/app/resource
     env_file: ./tugas-besar-pat-booking/.env_docker
     depends_on:
       - booking-db
